@@ -334,7 +334,7 @@ dat<-dat.34
 #### Analyses ####
 # Political Interest
 ## Correlation with education
-cor.test(dat$EDUC_W4, dat$q16r_4)
+cor.test(dat$EDUC_W4, dat$pol.interest)
 ##Make and test correlation with ideo.x
 cor.test(dat$pol.interest, dat$ideo.x_W4)
 ## Predict Interest from education, extremity, and demographics

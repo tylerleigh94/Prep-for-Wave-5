@@ -1,0 +1,183 @@
+---
+title: "Change over Time"
+author: "Tyler Leigh"
+date: "11/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r echo=FALSE}
+####Libraries####
+library(easypackages)
+libs<-c("tidyverse", "dplyr", "naniar", "sjlabelled", "car")
+libraries(libs)
+####Load in the data####
+dat <- 
+  readRDS("~/Desktop/R Programs/Research--Diana/Amerispeak/Prep for Wave 5/waves1234all.rds")
+dat.orig<-dat
+dat<-remove_all_labels(dat)
+#### Recodes####
+# Variable Recodes
+dat <- dat %>%
+  replace_with_na_at(.vars="P_PARTYID7_W4", condition = ~.x %in% c(98))
+dat$PARTYID7_W4<-dat$P_PARTYID7_W4
+dat$PARTYID7_W2<-dat$partyid7_w2
+dat <- dat %>%
+  replace_with_na_at(.vars=c("P_IDEO_W4", "IDEO_W1", "IDEO_W2", "IDEO_W3"), 
+                     condition = ~.x %in% c(8, 77, 98, 99))
+dat$IDEO_W4<-dat$P_IDEO_W4
+dat$worryterror_1 <- (4-dat$PT5_W1)
+dat$worryterror_2 <- (4-dat$PT5_W2)
+dat$worryterror_3 <- (4-dat$PT5_W3)
+dat$worryterror_4 <- (4-dat$PT5_W4)
+##Rename IDEO and THERMTRUMP to remove _W
+dat$ideo_1<-dat$IDEO_W1
+dat$ideo_2<-dat$IDEO_W2
+dat$ideo_3<-dat$IDEO_W3
+dat$ideo_4<-dat$IDEO_W4
+dat$thermtrump_1<-dat$THERMTRUMP_W1
+dat$thermtrump_2<-dat$THERMTRUMP_W2
+dat$thermtrump_3<-dat$THERMTRUMP_W3
+dat$thermtrump_4<-dat$THERMTRUMP_W4
+```
+# Means over Time
+```{r echo=FALSE}
+# Make Figures of change over time for _WX Variables
+## Get out data
+dat.means.fig<-dat %>%
+  select(PARTYID7_W1, PARTYID7_W2, PARTYID7_W3, PARTYID7_W4, THERMTRUMP_W1, THERMTRUMP_W2,
+         THERMTRUMP_W3, THERMTRUMP_W4, IDEO_W1, IDEO_W2, IDEO_W3, IDEO_W4) %>%
+  pivot_longer(everything(), names_to=c(".value", "wave"), names_sep="_W") %>%
+  group_by(wave) %>%
+  pivot_longer(-wave, names_to = "variable", values_to = "value") %>%
+  group_by(variable, wave) %>%
+  summarize(mean=mean(value, na.rm=T), 
+            upper=mean(value, na.rm=T)+(1.96*(sd(value, na.rm=T)/sqrt(n()))),
+            lower=mean(value, na.rm=T)-(1.96*(sd(value, na.rm=T)/sqrt(n()))))
+
+## Make Figures
+for(x in 1:(nrow(dat.means.fig)/4)){
+  a <- 4*x-3
+  b <- 4*x-2
+  c <- 4*x-1
+  d <- 4*x
+  print(ggplot(aes(x=wave), data=dat.means.fig[c(a:d),])+
+    geom_point(aes(y=mean))+
+    geom_errorbar(aes(ymin=lower, ymax=upper), width=.5)+
+    ggtitle(label=dat.means.fig$variable[a])+
+    theme_bw()+
+      labs(subtitle = paste("Range = (",
+        range(dat[,grep(dat.means.fig$variable[a], colnames(dat))[1]], na.rm=T)[1], ", ",
+        range(dat[,grep(dat.means.fig$variable[a], colnames(dat))[1]], na.rm=T)[2], ")",
+        sep="")))+
+    theme(plot.subtitle = element_text(size=10, hjust=0.5))
+}
+
+# Make Figures for Change over time for _X variables
+## Get out the data
+dat.means.x.fig <- dat %>%
+  select(party3_1, party3_2, party3_3, party3_4, party2_1, party2_2, party2_3, party2_4,
+         socialtrust_1, socialtrust_2, socialtrust_3, socialtrust_4, yeswar_1, yeswar_2,
+         yeswar_3, yeswar_4, immigindex_1, immigindex_2, immigindex_3, immigindex_4, 
+         hc1r_1, hc1r_2, hc1r_3, hc1r_4, tr1r_1, tr1r_2, tr1r_3, tr1r_4, wayoflife_1, 
+         wayoflife_2, wayoflife_3, wayoflife_4, polarindex_1, polarindex_2, polarindex_3,
+         polarindex_4, isoindex_1, isoindex_2, isoindex_3, isoindex_4, tsn1r_1, tsn1r_2, 
+         tsn1r_3, tsn1r_4, safetynet_1, safetynet_2, safetynet_3, safetynet_4, disblack_1, 
+         disblack_2, disblack_3, disblack_4, dishispanic_1, dishispanic_2, dishispanic_3, 
+         dishispanic_4, diswhite_1, diswhite_2, diswhite_3, diswhite_4, diswomen_1, 
+         diswomen_2, diswomen_3, diswomen_4, dismen_1, dismen_2, dismen_3, dismen_4, 
+         dismuslim_1, dismuslim_2, dismuslim_3, dismuslim_4, dischristian_1, dischristian_2,
+         dischristian_3, dischristian_4, natsupindex_1, natsupindex_2, natsupindex_3, 
+         natsupindex_4, govttrust_1, govttrust_2, govttrust_3, govttrust_4, sc1r_1, sc1r_2,
+         sc1r_3, sc1r_4, ecoperc_1, ecoperc_2, ecoperc_3, ecoperc_4, perecoperc_1, 
+         perecoperc_2, perecoperc_3, perecoperc_4, majorrelig_1, majorrelig_2, majorrelig_3, 
+         majorrelig_4, majorrace_1,
+         majorrace_2, majorrace_3, majorrace_4, majorsex_1, majorsex_2, majorsex_3, majorsex_4,
+         syslegindex_1, syslegindex_2, syslegindex_3, syslegindex_4, worryterror_1, worryterror_2,
+         worryterror_3, worryterror_4) %>%
+  pivot_longer(everything(), names_to=c(".value", "wave"), names_sep="_") %>%
+  group_by(wave) %>%
+  pivot_longer(-wave, names_to = "variable", values_to = "value") %>%
+  group_by(variable, wave) %>%
+  summarize(mean=mean(value, na.rm=T), 
+            upper=mean(value, na.rm=T)+(1.96*(sd(value, na.rm=T)/sqrt(n()))),
+            lower=mean(value, na.rm=T)-(1.96*(sd(value, na.rm=T)/sqrt(n()))))
+
+## Make Figures
+for(x in 1:(nrow(dat.means.x.fig)/4)){
+  a <- 4*x-3
+  b <- 4*x-2
+  c <- 4*x-1
+  d <- 4*x
+  print(ggplot(aes(x=wave), data=dat.means.x.fig[c(a:d),])+
+          geom_point(aes(y=mean))+
+          geom_errorbar(aes(ymin=lower, ymax=upper), width=.5)+
+          ggtitle(label=dat.means.x.fig$variable[a])+
+          theme_bw()+
+          labs(subtitle = paste("Range = (",
+            range(dat[,grep(dat.means.x.fig$variable[a], colnames(dat))[1]], na.rm=T)[1], ", ",
+            range(dat[,grep(dat.means.x.fig$variable[a], colnames(dat))[1]], na.rm=T)[2], ")",
+            sep="")))+
+          theme(plot.subtitle = element_text(size=10, hjust=0.5))
+}
+```
+
+# Means over time by party
+
+```{r echo=FALSE}
+# Make Figures for Over time change by party
+## Get Data
+dat.means.party.fig <- dat %>%
+  select(party2_1, party2_2, party2_3, party2_4, ideo_1, ideo_2, ideo_3, ideo_4,
+         socialtrust_1, socialtrust_2, socialtrust_3, socialtrust_4, yeswar_1, yeswar_2,
+         yeswar_3, yeswar_4, immigindex_1, immigindex_2, immigindex_3, immigindex_4, 
+         hc1r_1, hc1r_2, hc1r_3, hc1r_4, tr1r_1, tr1r_2, tr1r_3, tr1r_4, wayoflife_1, 
+         wayoflife_2, wayoflife_3, wayoflife_4, polarindex_1, polarindex_2, polarindex_3,
+         polarindex_4, isoindex_1, isoindex_2, isoindex_3, isoindex_4, tsn1r_1, tsn1r_2, 
+         tsn1r_3, tsn1r_4, safetynet_1, safetynet_2, safetynet_3, safetynet_4, disblack_1, 
+         disblack_2, disblack_3, disblack_4, dishispanic_1, dishispanic_2, dishispanic_3, 
+         dishispanic_4, diswhite_1, diswhite_2, diswhite_3, diswhite_4, diswomen_1, 
+         diswomen_2, diswomen_3, diswomen_4, dismen_1, dismen_2, dismen_3, dismen_4, 
+         dismuslim_1, dismuslim_2, dismuslim_3, dismuslim_4, dischristian_1, dischristian_2,
+         dischristian_3, dischristian_4, natsupindex_1, natsupindex_2, natsupindex_3, 
+         natsupindex_4, govttrust_1, govttrust_2, govttrust_3, govttrust_4, sc1r_1, sc1r_2,
+         sc1r_3, sc1r_4, ecoperc_1, ecoperc_2, ecoperc_3, ecoperc_4, perecoperc_1, 
+         perecoperc_2, perecoperc_3, perecoperc_4, majorrelig_1, majorrelig_2, majorrelig_3, 
+         majorrelig_4, majorrace_1,
+         majorrace_2, majorrace_3, majorrace_4, majorsex_1, majorsex_2, majorsex_3, majorsex_4,
+         syslegindex_1, syslegindex_2, syslegindex_3, syslegindex_4, worryterror_1, worryterror_2,
+         worryterror_3, worryterror_4, thermtrump_1, thermtrump_2, thermtrump_3, thermtrump_4) %>%
+  pivot_longer(everything(), names_to=c(".value", "wave"), names_sep="_") %>%
+  group_by(wave, party2) %>%
+  pivot_longer(-c(wave, party2), names_to = "variable", values_to = "value") %>%
+  group_by(variable, wave, party2) %>%
+  summarize(mean=mean(value, na.rm=T), 
+          upper=mean(value, na.rm=T)+(1.96*(sd(value, na.rm=T)/sqrt(n()))),
+          lower=mean(value, na.rm=T)-(1.96*(sd(value, na.rm=T)/sqrt(n()))))
+
+### Drop NAs
+dat.means.party.fig <- na.omit(dat.means.party.fig)
+
+### Recode Party to add labels
+dat.means.party.fig$party2<-factor(dat.means.party.fig$party2, labels=c("Democrats", "Republicans"))
+
+## Make Figures
+for(x in 1:(nrow(dat.means.party.fig)/8)){
+  a <- 8*x-7
+  d <- 8*x
+  print(ggplot(aes(x=wave, color=party2), data=dat.means.party.fig[c(a:d),])+
+          geom_point(aes(y=mean))+
+          geom_errorbar(aes(ymin=lower, ymax=upper), width=.5)+
+          scale_color_manual(values=c("blue", "red"))+
+          ggtitle(label=dat.means.party.fig$variable[a])+
+          theme_bw()+
+          labs(subtitle = paste("Range = (",
+            range(dat[,grep(dat.means.party.fig$variable[a], colnames(dat))[1]], na.rm=T)[1], ", ",
+            range(dat[,grep(dat.means.party.fig$variable[a], colnames(dat))[1]], na.rm=T)[2], ")",
+            sep="")))+
+          theme(plot.subtitle = element_text(size=10, hjust=0.5))
+}
+```
+
