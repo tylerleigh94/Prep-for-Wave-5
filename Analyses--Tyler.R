@@ -1,6 +1,6 @@
 ####Libraries####
 library(easypackages)
-libs<-c("tidyverse", "dplyr", "naniar", "sjlabelled", "car")
+libs<-c("tidyverse", "dplyr", "naniar", "sjlabelled", "car", "haven")
 libraries(libs)
 ####Load in the data####
 dat <- 
@@ -312,6 +312,124 @@ for(x in 1:(nrow(dat.means.party.fig)/8)){
             sep="")))+
           theme(plot.subtitle = element_text(size=10, hjust=0.5))
 }
+
+m.tol<-lm(polarindex_4~poltol_4+AGE_W4+EDUC4_W4+(GENDER_W4-1)+party3_4, data=dat)
+
+#### Sociotropic measures--Means over time####
+# Create the indices
+dat$fair.ind_3<-rowMeans(cbind(dat$fair1r_3, dat$fair3r_3, dat$fair4r_3))
+dat$fair.ind_4<-rowMeans(cbind(dat$fair1r_4, dat$fair3r_4, dat$fair4r_4))
+# Check reliability
+fair.index_3<-grep("fair", colnames(dat))[c(1, 3, 4)]
+fair.index_4<-grep("fair", colnames(dat))[c(5:7)]
+psych::alpha(dat[fair.index_3], check.keys=T)
+psych::alpha(dat[fair.index_4], check.keys=T)
+# Analyses
+cor.test(dat$fair.ind_3, dat$fair.ind_4)
+cor.test(dat$fair1r_3, dat$fair1r_4)
+cor.test(dat$fair3r_3, dat$fair3r_4)
+cor.test(dat$fair4r_3, dat$fair4r_4)
+
+## Change over time by party
+dat.fair.change.party <- dat %>%
+  select(fair1r_3, fair1r_4, fair3r_3, fair3r_4, fair4r_3, fair4r_4, party2_3, party2_4) %>%
+  pivot_longer(everything(), names_to=c(".value", "wave"), names_sep="_") %>%
+  group_by(wave, party2) %>%
+  pivot_longer(-c(wave, party2), names_to = "variable", values_to = "value") %>%
+  group_by(variable, wave, party2) %>%
+  summarize(mean=mean(value, na.rm=T), 
+            upper=mean(value, na.rm=T)+(1.96*(sd(value, na.rm=T)/sqrt(n()))),
+            lower=mean(value, na.rm=T)-(1.96*(sd(value, na.rm=T)/sqrt(n()))))
+dat.fair.change.party<-na.omit(dat.fair.change.party)
+### Make figures
+for(x in 1:(nrow(dat.fair.change.party)/4)){
+  a <- 4*x-3
+  d <- 4*x
+  print(ggplot(aes(x=wave, color=factor(party2)), data=dat.fair.change.party[c(a:d),])+
+          geom_point(aes(y=mean))+
+          geom_errorbar(aes(ymin=lower, ymax=upper), width=.5)+
+          geom_hline(aes(yintercept = 2))+
+          scale_color_manual(values=c("blue", "red"))+
+          ggtitle(label=dat.fair.change.party$variable[a])+
+          theme_bw()+
+          labs(subtitle = paste("Range = (",
+                                range(dat[,grep(dat.fair.change.party$variable[a], colnames(dat))[1]], na.rm=T)[1], ", ",
+                                range(dat[,grep(dat.fair.change.party$variable[a], colnames(dat))[1]], na.rm=T)[2], ")",
+                                sep="")))+
+    theme(plot.subtitle = element_text(size=10, hjust=0.5))
+}
+
+## Change Over time
+dat.fair.change <- dat %>%
+  select(fair1r_3, fair1r_4, fair3r_3, fair3r_4, fair4r_3, fair4r_4) %>%
+  pivot_longer(everything(), names_to=c(".value", "wave"), names_sep="_") %>%
+  group_by(wave) %>%
+  pivot_longer(-c(wave), names_to = "variable", values_to = "value") %>%
+  group_by(variable, wave) %>%
+  summarize(mean=mean(value, na.rm=T), 
+            upper=mean(value, na.rm=T)+(1.96*(sd(value, na.rm=T)/sqrt(n()))),
+            lower=mean(value, na.rm=T)-(1.96*(sd(value, na.rm=T)/sqrt(n()))))
+dat.fair.change<-na.omit(dat.fair.change)
+### Make figures
+for(x in 1:(nrow(dat.fair.change)/2)){
+  a <- 2*x-1
+  d <- 2*x
+  print(ggplot(aes(x=wave), data=dat.fair.change[c(a:d),])+
+          geom_point(aes(y=mean))+
+          geom_errorbar(aes(ymin=lower, ymax=upper), width=.5)+
+          geom_hline(aes(yintercept = 2))+
+          scale_color_manual(values=c("blue", "red"))+
+          ggtitle(label=dat.fair.change$variable[a])+
+          theme_bw()+
+          labs(subtitle = paste("Range = (",
+                                range(dat[,grep(dat.fair.change$variable[a], colnames(dat))[1]], na.rm=T)[1], ", ",
+                                range(dat[,grep(dat.fair.change$variable[a], colnames(dat))[1]], na.rm=T)[2], ")",
+                                sep="")))+
+    theme(plot.subtitle = element_text(size=10, hjust=0.5))
+}
+#### Predicting perceived inequality ####
+# Recode gender and race
+dat$male_4<-ifelse(dat$GENDER_W4==1, 1, 0)
+dat$white_4<-ifelse(dat$RACETHNICITY_W4==1, 1, 0)
+m.ineq1<-lm(gap1r_4~AGE_W4+EDUC4_W4+INCOME_W4+party3_4+male_4+white_4+eco.var_4+fair.ind_4, 
+            data=dat)
+dat.gap<-cbind(m.ineq1$model, m.ineq1$fitted.values)
+cor.test(dat.gap$gap1r_4, dat.gap$`m.ineq1$fitted.values`)
+
+#### Predicting Interest from IDKs and skips on political attitude questions ####
+# Read in uncleaned wave 4
+dat.4u <- read_sav("Data/s7991_UPenn_LongPollW4_FINAL_WEIGHTED_client_7.11.2019.sav")
+# Set up vectors of skipped/refused/DK values
+na.2<-c(77, 98, 99)
+na.3<-c(777, 998, 999)
+#Construct alternative interest measure
+index.w4<-grep("_W4", colnames(dat))
+dat.4u$dk.skip_4<-NA
+for(x in 1:nrow(dat.4u)){
+  n<-0
+  if(dat.4u$THERMTRUMP_W4[x] %in% na.3) {n<-n+1}
+  if(dat.4u$GUNS_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$TSN1_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$TSN2_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$CHI_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$CHI2_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$RS1_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$CL1_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$SOCMED_W4[x] %in% na.2) {n<-n+1}
+  if(dat.4u$RUS1_W4[x] %in% na.2) {n<-n+1}
+    
+  dat.4u$dk.skip_4[x]<-n
+}
+# Create Dataframe and merge with main data
+dat.int<-cbind(dat.4u$CaseId, dat.4u$dk.skip_4)
+colnames(dat.int)<-c('CaseId', 'dk.skip_4')
+dat.int<-as_tibble(dat.int)
+dat<-left_join(dat, dat.int, by='CaseId')
+# Correlation between interest question and constructed measure
+cor.test(dat$q16r_4, dat$dk.skip_4)
+
+# Make a different measure of interest based on ALL wave 4 variables
+
 
 
 
