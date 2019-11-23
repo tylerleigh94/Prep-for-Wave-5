@@ -32,4 +32,4 @@ for(x in 1:nrow(dat.1234all)){
 
 ####Save Dataframe####
 saveRDS(dat.1234all, file="waves1234all.rds")
-
+write_sav(dat.1234all, path="waves1234all.sav")
